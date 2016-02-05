@@ -1,0 +1,34 @@
+#!/usr/bin/python3
+
+import i3
+import json
+import argparse
+
+def get_current_workspace():
+    workspaces = i3.get_workspaces()
+    focused = [x for x in workspaces if x['focused']]
+    return focused[0]['name']
+
+
+def cmd_focus_next_output(args):
+    outputs = i3.get_outputs()
+    outputs = [i for i in outputs if i['current_workspace'] != None]
+    outputs.sort(key=lambda x: x['name'])
+    current_workspace = get_current_workspace()
+    for i in range(len(outputs)):
+        if outputs[i]['current_workspace'] == current_workspace:
+            break
+    new_output = outputs[(i + 1) % len(outputs)]
+    i3.command('focus', 'output ' + new_output['name'])
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    subparsers = parser.add_subparsers()
+
+    parser_focus_next_output = subparsers.add_parser('focus-next-output')
+    parser_focus_next_output.set_defaults(handler=cmd_focus_next_output)
+
+    parsed = parser.parse_args()
+    parsed.handler(parsed)
