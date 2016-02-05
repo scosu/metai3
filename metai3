@@ -10,7 +10,7 @@ def get_current_workspace():
     return focused[0]['name']
 
 
-def cmd_focus_next_output(args):
+def get_next_output():
     outputs = i3.get_outputs()
     outputs = [i for i in outputs if i['current_workspace'] != None]
     outputs.sort(key=lambda x: x['name'])
@@ -19,8 +19,20 @@ def cmd_focus_next_output(args):
         if outputs[i]['current_workspace'] == current_workspace:
             break
     new_output = outputs[(i + 1) % len(outputs)]
+    return new_output
+
+
+def cmd_focus_next_output(args):
+    new_output = get_next_output()
     i3.command('focus', 'output ' + new_output['name'])
 
+
+def cmd_move_to_next_output(args):
+    new_output = get_next_output()
+    i3.command('move', args.moved_object + ' to output ' + new_output['name'])
+    if args.follow_focus:
+        # FIXME not working
+        i3.command('focus', 'output ' + new_output['name'])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -29,6 +41,14 @@ if __name__ == "__main__":
 
     parser_focus_next_output = subparsers.add_parser('focus-next-output')
     parser_focus_next_output.set_defaults(handler=cmd_focus_next_output)
+
+    parser_move_to_next_output = subparsers.add_parser('move-container-to-next-output')
+    parser_move_to_next_output.set_defaults(handler=cmd_move_to_next_output, moved_object='container')
+    parser_move_to_next_output.add_argument('--follow-focus', default=False, action='store_true')
+
+    parser_move_to_next_output = subparsers.add_parser('move-workspace-to-next-output')
+    parser_move_to_next_output.set_defaults(handler=cmd_move_to_next_output, moved_object='workspace')
+    parser_move_to_next_output.add_argument('--follow-focus', default=False, action='store_true')
 
     parsed = parser.parse_args()
     parsed.handler(parsed)
