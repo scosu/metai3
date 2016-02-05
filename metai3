@@ -42,13 +42,10 @@ if __name__ == "__main__":
     parser_focus_next_output = subparsers.add_parser('focus-next-output')
     parser_focus_next_output.set_defaults(handler=cmd_focus_next_output)
 
-    parser_move_to_next_output = subparsers.add_parser('move-container-to-next-output')
-    parser_move_to_next_output.set_defaults(handler=cmd_move_to_next_output, moved_object='container')
-    parser_move_to_next_output.add_argument('--follow-focus', default=False, action='store_true')
-
-    parser_move_to_next_output = subparsers.add_parser('move-workspace-to-next-output')
-    parser_move_to_next_output.set_defaults(handler=cmd_move_to_next_output, moved_object='workspace')
-    parser_move_to_next_output.add_argument('--follow-focus', default=False, action='store_true')
+    for moved in ['container', 'workspace']:
+        parser_move_to_next_output = subparsers.add_parser('move-' + moved + '-to-next-output')
+        parser_move_to_next_output.set_defaults(handler=cmd_move_to_next_output, moved_object=moved)
+        parser_move_to_next_output.add_argument('--follow-focus', default=False, action='store_true')
 
     parsed = parser.parse_args()
     parsed.handler(parsed)
