@@ -4,6 +4,7 @@ import i3
 import json
 import argparse
 import subprocess
+import datetime
 
 
 def get_current_workspace():
@@ -79,8 +80,44 @@ def cmd_pull_window(args):
     else:
         i3.msg('command', '[id="' + str(window['window']) + '"] move to workspace ' + wspace)
 
+
+def cmd_push_container(args):
+    workspaces = [i for i in i3.get_workspaces() if not i['focused']]
+    p = subprocess.Popen(['rofi', '-dmenu', '-i', '-p', 'Workspace: '], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    sout, serr = p.communicate(input="\n".join(sorted([x['name'] for x in workspaces])).encode('utf8'))
+    if p.returncode != 0:
+        return
+    i3.msg('command', 'move to workspace ' + sout.decode())
+
+
+def cmd_rename_workspace(args):
+    p = subprocess.Popen(['rofi', '-dmenu', '-i', '-p', 'Workspace name: '], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    sout, serr = p.communicate(input="".encode('utf8'))
+    if p.returncode != 0:
+        return
+    i3.msg('command', 'rename workspace to ' + sout.decode())
+
+
+def cmd_focus_workspace(args):
+    workspaces = i3.get_workspaces()
+    p = subprocess.Popen(['rofi', '-dmenu', '-i', '-p', 'Workspace name: '], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    sout, serr = p.communicate(input="\n".join(sorted([x['name'] for x in workspaces])).encode('utf8'))
+    if p.returncode != 0:
+        return
+    i3.msg('command', 'workspace ' + sout.decode())
+
+
+def cmd_new_workspace(args):
+    i3.msg('command', 'workspace ' + datetime.datetime.today().strftime('%Y%m%d%H%M%S'))
+
+
+def cmd_help(args):
+    print(parser.format_help())
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.set_defaults(handler=cmd_help)
 
     subparsers = parser.add_subparsers()
 
@@ -95,5 +132,18 @@ if __name__ == "__main__":
     parser_pull_window = subparsers.add_parser('pull-window')
     parser_pull_window.set_defaults(handler=cmd_pull_window)
 
+    parser_push_container = subparsers.add_parser('push-container')
+    parser_push_container.set_defaults(handler=cmd_push_container)
+
+    parser_rename_workspace = subparsers.add_parser('rename-workspace')
+    parser_rename_workspace.set_defaults(handler=cmd_rename_workspace)
+
+    parser_focus_workspace = subparsers.add_parser('focus-workspace')
+    parser_focus_workspace.set_defaults(handler=cmd_focus_workspace)
+
+    parser_new_workspace = subparsers.add_parser('new-workspace')
+    parser_new_workspace.set_defaults(handler=cmd_new_workspace)
+
     parsed = parser.parse_args()
+
     parsed.handler(parsed)
