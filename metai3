@@ -3,6 +3,8 @@
 import i3
 import json
 import argparse
+import subprocess
+
 
 def get_current_workspace():
     workspaces = i3.get_workspaces()
@@ -29,10 +31,53 @@ def cmd_focus_next_output(args):
 
 def cmd_move_to_next_output(args):
     new_output = get_next_output()
-    i3.command('move', args.moved_object + ' to output ' + new_output['name'])
+    print('move ' + args.moved_object + ' to output ' + new_output['name'])
+    i3.msg('command', 'move ' + args.moved_object + ' to output ' + new_output['name'])
     if args.follow_focus:
         # FIXME not working
-        i3.command('focus', 'output ' + new_output['name'])
+        print('focus output ' + new_output['name'])
+        i3.msg('command', 'focus output ' + new_output['name'])
+
+
+def cmd_pull_window(args):
+
+    def _scan_tree(tree, wspace=None):
+        if tree['type'] == 'workspace':
+            wspace = tree['name']
+        if tree['focused']:
+            return []
+        if tree['window'] and tree['name'] != None:
+            tree['workspace'] = wspace
+            return [tree]
+        ret = []
+        for n in tree['nodes']:
+            ret += _scan_tree(n, wspace)
+        return ret
+
+    wspace = get_current_workspace()
+    tree = i3.get_tree()
+    possible_windows = _scan_tree(tree)
+    p = subprocess.Popen(['rofi', '-dmenu', '-i', '-no-custom', '-p', 'Window: '], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    sout, serr = p.communicate(input="\n".join(sorted([x['name'] for x in possible_windows])).encode('utf8'))
+    if p.returncode != 0:
+        return
+    selected = sout.decode().strip()
+    window = None
+    for i in possible_windows:
+        if i['name'].strip() == selected:
+            window = i
+            break
+    if not window:
+        for i in possible_windows:
+            if selected in i['name']:
+                window = i
+                break
+    if not window:
+        return
+    if window['workspace'] == wspace:
+        i3.msg('command', '[id="' + str(window['window']) + '"] focus')
+    else:
+        i3.msg('command', '[id="' + str(window['window']) + '"] move to workspace ' + wspace)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -46,6 +91,9 @@ if __name__ == "__main__":
         parser_move_to_next_output = subparsers.add_parser('move-' + moved + '-to-next-output')
         parser_move_to_next_output.set_defaults(handler=cmd_move_to_next_output, moved_object=moved)
         parser_move_to_next_output.add_argument('--follow-focus', default=False, action='store_true')
+
+    parser_pull_window = subparsers.add_parser('pull-window')
+    parser_pull_window.set_defaults(handler=cmd_pull_window)
 
     parsed = parser.parse_args()
     parsed.handler(parsed)
